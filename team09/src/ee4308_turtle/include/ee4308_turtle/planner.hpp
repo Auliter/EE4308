@@ -11,7 +11,7 @@ class Planner
     public:
         struct Node
         {
-            double g, h;
+            double c;
             bool visited;
             Index idx, parent;
             Node();

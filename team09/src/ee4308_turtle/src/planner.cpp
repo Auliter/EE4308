@@ -1,6 +1,6 @@
 #include "planner.hpp"
 Planner::Node::Node() 
-    : g(0), h(0), visited(false), idx(-1, -1), parent(-1, -1) 
+    : c(0), visited(false), idx(-1, -1), parent(-1, -1) 
     {}
 Planner::Open::Open() 
     : f(0), idx(-1, -1) 
@@ -27,7 +27,7 @@ Planner::Planner(Grid & grid) // assumes the size of the grid is always the same
 
 void Planner::add_to_open(Node * node)
 {   // sort node into the open list
-    double node_f = node->g + node->h;
+    double node_f = node->c; 
 
     for (int n = 0; n < open_list.size(); ++n)
     {
@@ -72,8 +72,7 @@ std::vector<Index> Planner::get(Index idx_start, Index idx_goal)
     // initialise data for all nodes
     for (Node & node : nodes)
     {
-        node.h = dist_oct(node.idx, idx_goal);
-        node.g = 1e5; // a reasonably large number. You can use infinity in clims as well, but clims is not included
+        node.c = 1e5; // a reasonably large number. You can use infinity in clims as well, but clims is not included
         node.visited = false;
     }
 
@@ -82,7 +81,7 @@ std::vector<Index> Planner::get(Index idx_start, Index idx_goal)
     ROS_INFO("idx_start %d %d", idx_start.i, idx_start.j);
     ROS_INFO("idx_goal %d %d", idx_goal.i, idx_goal.j);
     Node * node = &(nodes[k]);
-    node->g = 0;
+    node->c = 0;
 
     // add start node to openlist
     add_to_open(node);
@@ -138,7 +137,7 @@ std::vector<Index> Planner::get(Index idx_start, Index idx_goal)
             }
 
             // get the cost if accessing from node as parent
-            double g_nb = node->g;
+            double g_nb = node->c;
             if (is_cardinal) 
                 g_nb += 1;
             else
@@ -148,9 +147,9 @@ std::vector<Index> Planner::get(Index idx_start, Index idx_goal)
             // compare the cost to any previous costs. If cheaper, mark the node as the parent
             int nb_k = grid.get_key(idx_nb);
             Node & nb_node = nodes[nb_k]; // use reference so changing nb_node changes nodes[k]
-            if (nb_node.g > g_nb + 1e-5)
+            if (nb_node.c > g_nb + 1e-5)
             {   // previous cost was more expensive, rewrite with current
-                nb_node.g = g_nb;
+                nb_node.c = g_nb;
                 nb_node.parent = node->idx;
 
                 // add to open
@@ -166,4 +165,3 @@ std::vector<Index> Planner::get(Index idx_start, Index idx_goal)
     open_list.clear();
     return path_idx; // is empty if open list is empty
 }
-
