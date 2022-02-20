@@ -102,27 +102,18 @@ int main(int argc, char **argv)
     double cmd_lin_vel = 0, cmd_ang_vel = 0;
     double dt;
     double prev_time = ros::Time::now().toSec();
-
     ////////////////// DECLARE VARIABLES HERE //////////////////
-    double pre_position_err = 0;
-    double accum_p_err = 0;
-    double position_err = dist_euc(pos_rbt.x,pos_rbt.y,target.x,target.y);
-    double Pk_r = 0;
-    double Ik_r = 0;
-    double Dk_r = 0;
-    double lin_vel = 0;
-    double pre_lin_vel = 0;
+    double err_kr = 0, err_k_ang = 0;
+    double sum_err_kr = 0, sum_err_k_ang = 0;
+    double err_r_prev = 0, err_ang_prev = 0;
+    double P_kr = 0, I_kr = 0, D_kr = 0;
+    double P_ka = 0, I_ka = 0, D_ka = 0;
 
-    double pre_ang_err = 0;
-    double accum_the_err = 0;
-    double ang_err = heading(pos_rbt,target) - ang_rbt;
-    double Pk_the = 0;
-    double Ik_the = 0;
-    double Dk_the = 0;
-    double ang_vel = 0;
-    double pre_ang_vel = 0;
+    double acc_kr = 0, acc_k_ang = 0;
+    double cmd_lin_vel_prev = 0;
+    double cmd_ang_vel_prev = 0;
 
-
+    double direction = 1.0;
     ROS_INFO(" TMOVE : ===== BEGIN =====");
 
     // main loop
@@ -139,50 +130,47 @@ int main(int argc, char **argv)
             prev_time += dt;
 
             ////////////////// MOTION CONTROLLER HERE //////////////////
-            pre_position_err = position_err;
-            position_err = dist_euc(pos_rbt.x,pos_rbt.y,target.x,target.y);
-            Pk_r = Kp_lin * position_err;
-            accum_p_err += position_err;
-            Ik_r = Ki_lin * (accum_p_err)*dt;
-            Dk_r = Kd_lin * pre_position_err/dt;
-            lin_vel = Pk_r+Ik_r+Dk_r;
+            err_kr = dist_euc(pos_rbt,target);
+            P_kr = Kp_lin * err_kr;            
+            sum_err_kr += (err_kr * dt);
+            I_kr = Ki_lin * sum_err_kr;
+            D_kr = Kd_lin * (err_kr - err_r_prev) / dt;
+            err_r_prev = err_kr;
+            
 
-            pre_ang_err = ang_err;
-            ang_err = limit_angle(heading(pos_rbt,target) - ang_rbt);
-            Pk_the = Kp_ang * ang_err;
-            accum_the_err += ang_err;
-            Ik_the = Ki_ang*accum_the_err*dt;
-            Dk_the = Kd_ang * (ang_err - pre_ang_err)/dt;
-            ang_vel = Pk_the + Ik_the + Dk_the;
-
-            if(ang_err>(M_PI/2)||ang_err<(-M_PI/2)){
-                lin_vel = 0;
-            }
-            else{
-                lin_vel = lin_vel * (pow(cos(ang_err),6));
-
+            err_k_ang = heading(pos_rbt,target) - ang_rbt;
+            err_k_ang = limit_angle(err_k_ang);
+            if(err_k_ang < (-0.5 * M_PI)){
+                err_k_ang = M_PI + err_k_ang;
+                direction = -1.0;
+            }else if(err_k_ang > (0.5 * M_PI)){
+                err_k_ang = err_k_ang - M_PI;
+                direction = -1.0;
+            }else{
+                err_k_ang = err_k_ang;
+                direction = 1.0;
             }
 
-            double lin_acc = (lin_vel - pre_lin_vel)/dt;
-            lin_acc = sat(max_lin_acc,lin_acc);
-            lin_vel = sat(max_lin_vel,pre_lin_vel+lin_acc*dt);
-            pre_lin_vel = lin_vel;
+            P_ka = Kp_ang * err_k_ang;
+            sum_err_k_ang += (err_k_ang * dt);
+            I_ka = Ki_ang * sum_err_k_ang;
+            D_ka = Kd_ang * (err_k_ang - err_ang_prev) / dt;
+            err_ang_prev = err_k_ang;
 
-            double ang_acc = (ang_vel - pre_ang_vel)/dt;
-            ang_acc = sat(max_ang_acc,ang_acc);
-            if(ang_acc < -4){
-                ang_acc = -4;
-            }
-            ang_vel = sat(max_ang_vel,pre_ang_vel+ang_acc*dt);
-            // ang_vel = sat(max_ang_vel,ang_vel);
-            if(ang_vel<-2.84){
-                ang_vel = -2.84;
-            }
-            pre_ang_vel = ang_vel;
+            cmd_lin_vel = (P_kr + I_kr + D_kr)*(1.0 - abs(err_k_ang/M_PI))*direction;
+            cmd_lin_vel = sat(cmd_lin_vel,max_lin_vel);
+            cmd_ang_vel = P_ka + I_ka + D_ka;
+            cmd_ang_vel = sat(cmd_ang_vel,max_ang_vel);
 
-            cmd_lin_vel = lin_vel;
-            cmd_ang_vel = ang_vel;
+            acc_kr = (cmd_lin_vel - cmd_lin_vel_prev) / dt;
+            acc_kr = sat(acc_kr,max_lin_acc);
+            cmd_lin_vel = sat(cmd_lin_vel + (acc_kr * dt), max_lin_vel);
+            cmd_lin_vel_prev = cmd_lin_vel;
 
+            acc_k_ang = (cmd_ang_vel - cmd_ang_vel_prev) / dt;
+            acc_k_ang = sat(acc_k_ang,max_ang_acc);
+            cmd_ang_vel = sat(cmd_ang_vel + (acc_k_ang * dt), max_ang_vel);
+            cmd_ang_vel_prev = cmd_ang_vel;
 
             // publish speeds
             msg_cmd.linear.x = cmd_lin_vel;
@@ -192,8 +180,7 @@ int main(int argc, char **argv)
             // verbose
             if (verbose)
             {
-                // ROS_INFO(" TMOVE :  FV(%6.3f) AV(%6.3f)", cmd_lin_vel, cmd_ang_vel);
-                ROS_INFO("Error:%6.3f P_ang:%6.3f  D_ang:%6.3f Ang_vel:%6.3f",ang_err,Pk_the,Dk_the,ang_vel);
+                ROS_INFO(" TMOVE :  FV(%6.3f) AV(%6.3f)", cmd_lin_vel, cmd_ang_vel);
             }
 
             // wait for rate
