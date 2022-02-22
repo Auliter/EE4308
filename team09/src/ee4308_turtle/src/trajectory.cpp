@@ -1,4 +1,5 @@
 #include "trajectory.hpp"
+#include "common.hpp"
 
 std::vector<Position> post_process(std::vector<Position> path, Grid &grid) // returns the turning points
 {
@@ -49,16 +50,77 @@ std::vector<Position> generate_trajectory(Position pos_begin, Position pos_end, 
 
     // (2) generate cubic / quintic trajectory
     // done by students
-
-    // OR (2) generate targets for each target_dt
     std::vector<Position> trajectory = {pos_begin};
+    
+    // start of cubic trajectory (uncomment this whole part and comment quintic trajectory part below, if use cubic)
+    // double a0=0,a1=0,a2=0,a3=0;
+    // double b0=0,b1=0,b2=0,b3=0;
+    // double passing_speed=0.1; //speed at start and end
+    // double v_x=0,v_y=0;
+
+    // v_x=Dx*passing_speed / dist_euc(pos_begin,pos_end);
+    // v_y=Dy*passing_speed / dist_euc(pos_begin,pos_end);   //similar triangle 
+
+    // a0=pos_begin.x;
+    // b0=pos_begin.y;
+    // a1=v_x;
+    // b1=v_y;
+    // a2= (-3/duration/duration * pos_begin.x) - (2/duration * v_x) + (3/duration/duration * pos_end.x) - (1/duration * v_x);
+    // b2= (-3/duration/duration * pos_begin.y) - (2/duration * v_y) + (3/duration/duration * pos_end.y) - (1/duration * v_y);
+    // a3= (2/duration/duration/duration * pos_begin.x) + (1/duration/duration * v_x) - (2/duration/duration/duration * pos_end.x) + (1/duration/duration * v_x);
+    // b3= (2/duration/duration/duration * pos_begin.y) + (1/duration/duration * v_y) - (2/duration/duration/duration * pos_end.y) + (1/duration/duration * v_y);
+    
+    // for (double time = target_dt; time < duration; time += target_dt)
+    // {
+    //     trajectory.emplace_back(
+    //         a0 + a1*time + a2*time*time + a3*time*time*time,
+    //         b0 + b1*time + b2*time*time + b3*time*time*time
+    //     );
+    // } // end of cubic trajectory
+
+    // Start of quintic trajectory
+    double a0=0,a1=0,a2=0,a3=0,a4=0,a5=0;
+    double b0=0,b1=0,b2=0,b3=0,b4=0,b5=0;
+    double passing_speed=0.1,passing_acc=0; //speed and acceleration at start and end
+    double v_x=0,v_y=0;
+    double acc_x=0,acc_y=0;
+    double length=dist_euc(pos_begin,pos_end);
+
+    v_x=Dx*passing_speed / length;
+    v_y=Dy*passing_speed / length;   //similar triangle 
+    acc_x=Dx*passing_acc / length;
+    acc_y=Dy*passing_acc / length;   //acc = 0 as passing_acc set to 0 for simplicity
+
+    a0=pos_begin.x;
+    b0=pos_begin.y;
+    a1=v_x;
+    b1=v_y;
+    a2= 0.5 * acc_x;
+    b2= 0.5 * acc_y;
+    a3= (-10/pow(duration,3) * pos_begin.x) - (6/pow(duration,2) * v_x) - (3/2/duration * acc_x) + (10/pow(duration,3) * pos_end.x) - (4/pow(duration,2) * v_x) + (1/2/duration * acc_x);
+    b3= (-10/pow(duration,3) * pos_begin.y) - (6/pow(duration,2) * v_y) - (3/2/duration * acc_y) + (10/pow(duration,3) * pos_end.y) - (4/pow(duration,2) * v_y) + (1/2/duration * acc_y);
+    a4= (15/pow(duration,4) * pos_begin.x) + (8/pow(duration,3) * v_x) + (3/2/pow(duration,2) * acc_x) + (-15/pow(duration,4) * pos_end.x) + (7/pow(duration,3) * v_x) + (-1/pow(duration,2) * acc_x);
+    b4= (15/pow(duration,4) * pos_begin.y) + (8/pow(duration,3) * v_y) + (3/2/pow(duration,2) * acc_y) + (-15/pow(duration,4) * pos_end.y) + (7/pow(duration,3) * v_y) + (-1/pow(duration,2) * acc_y);
+    a5= (-6/pow(duration,5) * pos_begin.x) + (-3/pow(duration,4) * v_x) + (-1/2/pow(duration,3) * acc_x) + (6/pow(duration,5) * pos_end.x) + (-3/pow(duration,4) * v_x) + (1/2/pow(duration,3) * acc_x);
+    b5= (-6/pow(duration,5) * pos_begin.y) + (-3/pow(duration,4) * v_y) + (-1/2/pow(duration,3) * acc_y) + (6/pow(duration,5) * pos_end.y) + (-3/pow(duration,4) * v_y) + (1/2/pow(duration,3) * acc_y);
+
     for (double time = target_dt; time < duration; time += target_dt)
     {
         trajectory.emplace_back(
-            pos_begin.x + Dx*time / duration,
-            pos_begin.y + Dy*time / duration
+            a0 + a1*time + a2*pow(time,2) + a3*pow(time,3)+a4*pow(time,4)+a5*pow(time,5),
+            b0 + b1*time + b2*pow(time,2) + b3*pow(time,3)+b4*pow(time,4)+b5*pow(time,5)
         );
-    }
+    } // end of quintic trajectory
+
+    // OR (2) generate targets for each target_dt
+    // std::vector<Position> trajectory = {pos_begin};
+    // for (double time = target_dt; time < duration; time += target_dt)
+    // {
+    //     trajectory.emplace_back(
+    //         pos_begin.x + Dx*time / duration,
+    //         pos_begin.y + Dy*time / duration
+    //     );
+    // }
 
     return trajectory; 
 }
