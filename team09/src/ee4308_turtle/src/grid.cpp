@@ -144,11 +144,11 @@ void Grid::update(Position pos_rbt, double ang_rbt, const std::vector<float> &ra
         else
         { // all cells to edge are free, but cell on edge is observed to be occupied
             // (1) for all cells that are not on the edge, set as free
-            // for (int m = 0; m < ray.size() - 1; ++m)
-            // {
-            //     Index idx = ray[m];
-            //     change_log_odds(false, idx);
-            // }
+            for (int m = 0; m < ray.size() - 1; ++m)
+            {
+                Index idx = ray[m];
+                change_log_odds(false, idx);
+            }
             // (2) for the cell on teh edge, set as occupied
             change_log_odds(true, ray.back()); //path.back() is path[path.size()-1]
         }
