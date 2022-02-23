@@ -34,6 +34,7 @@ class Grid
         int get_key(Index idx);
         bool get_cell(Index idx); // for planners
         bool get_cell(Position pos);
+        bool get_cell2(Index idx);
 
         void write_to_msg(nav_msgs::OccupancyGrid &msg_grid_lo, nav_msgs::OccupancyGrid & msg_grid_inf);
 
@@ -41,4 +42,3 @@ class Grid
         Position idx2pos(Index idx);
 };
 #endif
-
