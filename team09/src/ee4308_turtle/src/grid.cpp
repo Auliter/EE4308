@@ -37,6 +37,15 @@ bool Grid::get_cell(Position pos)
     return get_cell(pos2idx(pos));
 }
 
+bool Grid::get_cell2(Index idx){
+    if (out_of_map(idx))
+        return false;
+    int k = get_key(idx);
+    if(grid_log_odds[k]>log_odds_thresh)
+        return false;
+    return true;
+}
+
 void Grid::generate_mask_inflation(double inflation_radius)
 {
     mask_inflation.clear();
@@ -136,10 +145,10 @@ void Grid::update(Position pos_rbt, double ang_rbt, const std::vector<float> &ra
 
         if (no_obstacles_visible)
         { // all cells to edge are observed to be free
-            // for (Index &idx : ray)
-            // {
-            //     change_log_odds(false, idx);
-            // }
+            for (Index &idx : ray)
+            {
+                change_log_odds(false, idx);
+            }
         }
         else
         { // all cells to edge are free, but cell on edge is observed to be occupied
