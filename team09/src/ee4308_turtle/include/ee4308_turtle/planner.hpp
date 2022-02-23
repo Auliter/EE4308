@@ -11,7 +11,7 @@ class Planner
     public:
         struct Node
         {
-            double c;
+            double g, h;
             bool visited;
             Index idx, parent;
             Node();
@@ -36,6 +36,8 @@ class Planner
         Index NB_LUT[8] = {{1,0}, {1,1}, {0,1}, {-1,1}, {-1,0}, {-1,-1}, {0,-1}, {1,-1}};
 
         void add_to_open(Node * node);
+        bool line_of_sight(Node * node1, Node & node2);
+        Index find_cloest(Index idx_src);
         Node * poll_from_open();
 };
 #endif
